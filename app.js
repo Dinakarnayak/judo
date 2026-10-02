@@ -21,7 +21,7 @@ function showError(raw) {
     errorEl.append(document.createTextNode('OpenAI API credits are exhausted. Judo will try another configured provider; otherwise add API credits. '));
     const link = document.createElement('a'); link.href = 'https://platform.openai.com/settings/organization/billing/'; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Open API billing'; errorEl.append(link); return;
   }
-  if (/no providers configured|connect at least one provider/i.test(message)) message = 'Add at least one provider API key to the local .env file, then restart Judo.';
+  if (/no providers configured|connect at least one provider/i.test(message)) message = 'Add a provider key in the local .env file, or enable Ollama for local models, then restart Judo.';
   errorEl.textContent = message;
 }
 function saveChats() { localStorage.setItem(keys.chats, JSON.stringify(chats.slice(0, 40))); }
@@ -146,7 +146,7 @@ async function refreshProviders() {
     const enabled = providers.filter(provider => provider.available);
     $('#providerSummary').textContent = enabled.length ? `Ready · ${enabled.map(item => item.label).join(' + ')}` : 'Add API keys to start';
     const list = $('#providerRows'); list.replaceChildren();
-    providers.forEach(provider => { const row = document.createElement('div'); row.className = 'provider-row'; const label = document.createElement('span'); label.textContent = `${provider.label} · ${provider.model}`; const badge = document.createElement('span'); badge.className = `badge ${provider.available ? 'configured' : 'notconfigured'}`; badge.textContent = provider.available ? 'Ready' : 'Add key'; row.append(label, badge); list.append(row); });
+    providers.forEach(provider => { const row = document.createElement('div'); row.className = 'provider-row'; const label = document.createElement('span'); label.textContent = `${provider.label} · ${provider.model}`; const badge = document.createElement('span'); badge.className = `badge ${provider.available ? 'configured' : 'notconfigured'}`; badge.textContent = provider.available ? 'Ready' : provider.id === 'ollama' ? 'Enable local' : 'Optional key'; row.append(label, badge); list.append(row); });
     const select = $('#provider'); [...select.options].forEach(option => { const entry = providers.find(item => item.id === option.value); option.disabled = !entry?.available; });
   } catch { $('#providerSummary').textContent = 'Local server unavailable'; }
 }
@@ -177,4 +177,3 @@ $('#savedOverlay').onclick = event => { if (event.target === $('#savedOverlay'))
 document.querySelectorAll('.suggest').forEach(button => button.onclick = () => send(button.dataset.prompt));
 window.addEventListener('beforeunload', () => recognition?.stop());
 renderProjects(); renderRecent(); if (activeId && activeChat()) renderChat(); else { activeId = ''; renderChat(); } refreshProviders(); setupVoice();
-
