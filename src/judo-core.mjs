@@ -2,8 +2,16 @@ import { env } from './config.mjs';
 import { OpenAIProvider } from '../providers/openai.mjs';
 import { ClaudeProvider } from '../providers/claude.mjs';
 import { GeminiProvider } from '../providers/gemini.mjs';
+import { CompatibleProvider } from '../providers/compatible.mjs';
 
-const registry = [new OpenAIProvider(env), new ClaudeProvider(env), new GeminiProvider(env)];
+const registry = [
+  new CompatibleProvider({ id: 'ollama', label: 'Ollama (local)', apiKey: '', model: env.OLLAMA_MODEL || 'llama3.2', baseUrl: env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1', enabled: env.OLLAMA_ENABLED === 'true' || Boolean(env.OLLAMA_MODEL), local: true }),
+  new GeminiProvider(env),
+  new CompatibleProvider({ id: 'groq', label: 'Groq', apiKey: env.GROQ_API_KEY, model: env.GROQ_MODEL || 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1' }),
+  new CompatibleProvider({ id: 'openrouter', label: 'OpenRouter', apiKey: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free', baseUrl: 'https://openrouter.ai/api/v1' }),
+  new CompatibleProvider({ id: 'huggingface', label: 'Hugging Face', apiKey: env.HF_TOKEN, model: env.HF_MODEL || 'openai/gpt-oss-20b:fastest', baseUrl: 'https://router.huggingface.co/v1' }),
+  new OpenAIProvider(env), new ClaudeProvider(env)
+];
 const byId = new Map(registry.map(provider => [provider.id, provider]));
 const systemPrompt = 'You are Judo, one helpful assistant that can coordinate specialized AI systems behind the scenes. Speak as Judo, not as a committee. Give a clear, useful, accurate answer. Never invent which providers were used. When synthesizing, reconcile disagreements, preserve uncertainty, and remove repetition.';
 
@@ -18,14 +26,15 @@ function autoPlan(message, attachments, available) {
   const complex = /compare|disagree|critique|evaluate|deep analysis|comprehensive|multiple perspectives|research/.test(text) || (document && /create|analy[sz]e|review|weakness|presentation/.test(text));
   const coding = /\b(code|debug|program|function|api|typescript|javascript|python|sql)\b/.test(text);
   let preferred, rationale;
-  if (multimodal) { preferred = ['gemini', 'openai']; rationale = 'multimodal input'; }
-  else if (document) { preferred = ['claude', 'openai']; rationale = 'document analysis'; }
-  else if (coding) { preferred = ['openai', 'claude']; rationale = 'coding and reasoning'; }
-  else { preferred = ['openai', 'claude', 'gemini']; rationale = 'general assistance'; }
-  if (complex) { preferred = ['openai', 'claude', 'gemini']; rationale = 'complex task benefits from cross-model collaboration'; }
+  // Prefer local/free-to-start options; free quotas and model availability vary by account.
+  if (multimodal) { preferred = ['gemini', 'ollama', 'groq', 'openrouter', 'huggingface', 'openai', 'claude']; rationale = 'multimodal input, with free/local fallbacks first'; }
+  else if (document) { preferred = ['ollama', 'gemini', 'groq', 'openrouter', 'huggingface', 'claude', 'openai']; rationale = 'document analysis, with free/local options first'; }
+  else if (coding) { preferred = ['ollama', 'groq', 'gemini', 'openrouter', 'huggingface', 'openai', 'claude']; rationale = 'coding and reasoning, with free/local options first'; }
+  else { preferred = ['ollama', 'gemini', 'groq', 'openrouter', 'huggingface', 'openai', 'claude']; rationale = 'general assistance, with free/local options first'; }
+  if (complex) { preferred = ['ollama', 'gemini', 'groq', 'openrouter', 'huggingface', 'openai', 'claude']; rationale = 'complex task; try configured free/local providers first'; }
   const availableIds = new Set(available.map(item => item.id));
   const selected = preferred.filter(id => availableIds.has(id));
-  return { selected: selected.length ? selected : available.slice(0, 1).map(item => item.id), rationale };
+  return { selected: selected.length ? [selected[0]] : available.slice(0, 1).map(item => item.id), rationale };
 }
 
 export async function runJudo({ message, history = [], attachments = [], mode = 'auto', provider = '', webSearch = false }) {
@@ -85,4 +94,3 @@ export async function runJudo({ message, history = [], attachments = [], mode = 
   const citations = successful.flatMap(result => result.citations || []);
   return { text, providers: successful.map(({ id, label, model }) => ({ id, label, model })), rationale, synthesized, citations: [...new Map(citations.map(item => [item.url, item])).values()] };
 }
-
