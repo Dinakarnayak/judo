@@ -5,7 +5,7 @@ import { GeminiProvider } from '../providers/gemini.mjs';
 import { CompatibleProvider } from '../providers/compatible.mjs';
 
 const registry = [
-  new CompatibleProvider({ id: 'ollama', label: 'Ollama (local)', apiKey: '', model: env.OLLAMA_MODEL || 'llama3.2', baseUrl: env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1', enabled: env.OLLAMA_ENABLED === 'true' || Boolean(env.OLLAMA_MODEL), local: true }),
+  new CompatibleProvider({ id: 'ollama', label: 'Ollama (local)', apiKey: '', model: env.OLLAMA_MODEL || 'llama3.2', baseUrl: env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1', enabled: env.OLLAMA_ENABLED === 'true', local: true }),
   new GeminiProvider(env),
   new CompatibleProvider({ id: 'groq', label: 'Groq', apiKey: env.GROQ_API_KEY, model: env.GROQ_MODEL || 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1' }),
   new CompatibleProvider({ id: 'openrouter', label: 'OpenRouter', apiKey: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free', baseUrl: 'https://openrouter.ai/api/v1' }),
@@ -94,3 +94,4 @@ export async function runJudo({ message, history = [], attachments = [], mode = 
   const citations = successful.flatMap(result => result.citations || []);
   return { text, providers: successful.map(({ id, label, model }) => ({ id, label, model })), rationale, synthesized, citations: [...new Map(citations.map(item => [item.url, item])).values()] };
 }
+
