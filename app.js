@@ -11,6 +11,9 @@ let chats = readStore(keys.chats, []);
 let projects = readStore(keys.projects, ['Personal']);
 let activeId = localStorage.getItem(keys.active) || '';
 let currentProject = 'Personal';
+const isGitHubPages = location.hostname.endsWith('github.io');
+const apiBase = (localStorage.getItem('judo.apiBase.v1') || '').replace(/\/$/, '');
+function apiUrl(path) { return apiBase ? `${apiBase}${path}` : path; }
 
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2400); }
 function showError(raw) {
@@ -121,13 +124,15 @@ async function send(text = input.value.trim()) {
   const typing = { role: 'assistant', content: 'Judo is bringing the right capabilities together…' };
   chat.messages.push(typing); renderChat();
   try {
-    const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    const response = await fetch(apiUrl('/api/chat'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       message: userMessage.content,
       history: chat.messages.slice(0, -2).filter(item => ['user','assistant'].includes(item.role)).map(item => ({ role: item.role, content: item.content })),
       attachments,
       mode: selectedMode(), provider: $('#provider').value, webSearch: $('#webSearch').checked
     }) });
-    const result = await response.json();
+    const raw = await response.text();
+    let result;
+    try { result = JSON.parse(raw); } catch { throw new Error(isGitHubPages ? 'Judo backend is not connected to this GitHub Pages site. Run Judo locally, or configure a hosted Judo API URL.' : `Judo server returned an invalid response (${response.status}).`); }
     chat.messages.pop();
     if (!response.ok) throw new Error(result.error || `Judo request failed (${response.status}).`);
     chat.messages.push({ role: 'assistant', content: result.text, providers: result.providers, rationale: result.rationale, synthesized: result.synthesized, citations: result.citations });
@@ -148,7 +153,7 @@ async function refreshProviders() {
     const list = $('#providerRows'); list.replaceChildren();
     providers.forEach(provider => { const row = document.createElement('div'); row.className = 'provider-row'; const label = document.createElement('span'); label.textContent = `${provider.label} · ${provider.model}`; const badge = document.createElement('span'); badge.className = `badge ${provider.available ? 'configured' : 'notconfigured'}`; badge.textContent = provider.available ? 'Ready' : provider.id === 'ollama' ? 'Enable local' : 'Optional key'; row.append(label, badge); list.append(row); });
     const select = $('#provider'); [...select.options].forEach(option => { const entry = providers.find(item => item.id === option.value); option.disabled = !entry?.available; });
-  } catch { $('#providerSummary').textContent = 'Local server unavailable'; }
+  } catch { $('#providerSummary').textContent = isGitHubPages ? 'Backend not connected' : 'Local server unavailable'; }
 }
 let voiceMode='browser', voiceController=null, voiceBridge=null;
 async function setupVoice(){
