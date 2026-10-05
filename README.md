@@ -1,49 +1,271 @@
-# Judo
+# Judo — one assistant, many minds
 
-Judo is one assistant that chooses a configured provider in Auto mode, with free/local services tried first. Collaborate sends the request to every configured provider and combines successful answers. Advanced lets you choose one provider. API keys stay on the local server and never go to the browser.
+Judo is a local-first AI assistant that gives you one conversation while routing work across multiple AI providers. It combines Auto routing, multi-model collaboration, manual provider selection, file analysis, web search support, browser voice, and an optional Jarvis-inspired local voice/agent bridge.
 
-## Run locally
+The Jarvis upgrade is integrated into Judo rather than replacing Judo's provider architecture.
 
-1. Install Node.js 20 or newer.
-2. Copy `.env.example` to `.env`.
-3. To use a local model, install [Ollama](https://ollama.com/download), run `ollama pull llama3.2`, and set `OLLAMA_ENABLED=true` in `.env`. Ollama must be running locally.
-4. Optionally add provider keys to `.env` (see below). Free tiers and quotas are controlled by each provider and may change.
-5. On Windows, double-click `start-judo.bat`; otherwise run `npm start` from this folder.
-6. Open `http://127.0.0.1:4173`.
+## What Judo can do
 
-## Providers
+- **Auto mode** — chooses a configured provider and falls back automatically.
+- **Collaborate** — asks multiple configured providers and synthesizes their answers.
+- **Advanced mode** — select a specific provider.
+- **Local AI** — Ollama support for private local inference.
+- **Cloud AI** — Gemini, Groq, OpenRouter, Hugging Face, OpenAI and Claude adapters.
+- **Files** — text, Markdown, CSV, JSON, PDF, images and video, subject to provider support.
+- **Web search** — optional provider-supported search.
+- **Projects and chats** — browser-local history and saved prompts.
+- **Voice** — browser speech recognition plus optional Jarvis-style local VAD.
+- **Barge-in foundation** — microphone remains available while voice interaction is active.
+- **ElevenLabs STT/TTS** — optional, with API keys kept on the local bridge.
+- **Claude Agent bridge** — optional local tool/agent runtime using the Claude Agent SDK.
+- **Safety controls** — effectful tools are disabled by default.
 
-| Provider | Setup | Notes |
-| --- | --- | --- |
-| Ollama | `OLLAMA_ENABLED=true`; install and download a model | Local inference; no per-request API charge. Uses your computer's resources. |
-| Gemini | `GEMINI_API_KEY` | Google AI Studio offers free-tier access to selected models with account-specific limits. |
-| Groq | `GROQ_API_KEY` | Fast hosted open models; availability and free developer quotas can vary. |
-| OpenRouter | `OPENROUTER_API_KEY` | Supports free model offerings; free model IDs and limits can change. |
-| Hugging Face | `HF_TOKEN` | Inference Providers may use account credits and provider-specific models/limits. |
-| ChatGPT / OpenAI API | `OPENAI_API_KEY` | Optional. ChatGPT subscription plans do not include API usage. |
-| Claude / Anthropic API | `ANTHROPIC_API_KEY` | Optional API account integration. |
+## Architecture
 
-The current default model names are in `.env.example` and can be changed there. For a local Ollama model, pull it first using `ollama pull <model>` and set `OLLAMA_MODEL` to that same model name. Provider catalogs, model availability, account eligibility, and free quotas change over time; consult the provider's official docs: [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing), [Groq API](https://console.groq.com/docs/api-reference), [OpenRouter pricing](https://openrouter.ai/pricing/), [Ollama API](https://docs.ollama.com/api), and [Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers).
+```text
+                         ┌──────────────────────┐
+                         │       Judo UI        │
+                         │ index.html/app.js    │
+                         └──────────┬───────────┘
+                                    │
+                         ┌──────────▼───────────┐
+                         │     Judo server      │
+                         │   server.mjs :4173   │
+                         └──────────┬───────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              │                     │                     │
+       ┌──────▼──────┐       ┌──────▼──────┐      ┌──────▼──────┐
+       │  Providers  │       │ Judo Core   │      │ Voice UI    │
+       │ Gemini etc. │       │ routing     │      │ VAD/audio   │
+       └─────────────┘       └─────────────┘      └──────┬──────┘
+                                                        │
+                                               ┌────────▼────────┐
+                                               │ Jarvis bridge   │
+                                               │ localhost:8787  │
+                                               └────────┬────────┘
+                                                        │
+                                           ┌────────────▼────────────┐
+                                           │ optional ElevenLabs /   │
+                                           │ Claude Agent SDK tools  │
+                                           └─────────────────────────┘
+```
 
-Auto mode chooses a single best-fit configured provider, preferring Ollama, Gemini, Groq, OpenRouter, and Hugging Face before optional OpenAI/Claude. If a provider is unavailable or out of quota, Judo tries the next configured provider. Media support depends on the selected provider. Use Collaborate only when you want parallel calls to all configured providers; external providers may consume paid quota even when some alternatives are free.
+Judo remains the primary assistant. The Jarvis layer supplies voice, local VAD, optional TTS/STT, and a controlled agent bridge.
 
-## Included capabilities
+## Quick start
 
-- Unified Judo chat with Auto, Collaborate, and Advanced modes.
-- Modular adapters for Gemini, Groq, OpenRouter, Ollama, Hugging Face, OpenAI, and Claude.
-- Free/local-first routing and fallback between configured providers.
-- Provider attribution and routing reason details on each response.
-- Text, image, PDF, and video attachments (support varies by provider).
-- Optional provider web search tools and citations where supported.
-- Browser microphone input, optional device read-aloud, conversation history, projects, and saved prompts.
-- Alexa custom skill Lambda starter in `alexa/lambda.mjs`.
+### Requirements
 
-## Alexa setup and limits
+- Node.js 20+
+- A modern browser such as Chrome or Edge
+- At least one configured AI provider, or Ollama for local inference
+- Microphone permission if using voice
 
-The Alexa adapter handles launch, AskJudo, help, stop, and cancel requests. Add `ASK_SKILL_ID` and provider keys to the Lambda environment, install dependencies with `npm install`, and deploy `alexa/lambda.mjs` as the Lambda handler. Create a custom Alexa skill with an `AskJudoIntent` and a `query` slot, then connect its endpoint to the Lambda function.
+### Install
 
-Alexa requires a cloud-accessible skill endpoint; it cannot call a computer bound to localhost. The starter keeps short history in the Alexa skill session. Persistent conversation sharing between Alexa and the local browser requires account linking and hosted storage and is not part of this prototype.
+```bash
+npm install
+```
+
+Copy the example configuration:
+
+```bash
+cp .env.example .env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### Start Judo
+
+```bash
+npm start
+```
+
+Open:
+
+```text
+http://127.0.0.1:4173
+```
+
+### Start Judo + Jarvis bridge together
+
+```bash
+npm run start:all
+```
+
+This starts:
+
+- Judo UI/API: `127.0.0.1:4173`
+- Jarvis voice/agent bridge: `127.0.0.1:8787`
+
+You can also run the bridge separately:
+
+```bash
+npm run start:voice
+```
+
+## Provider configuration
+
+| Provider | Environment variable | Notes |
+|---|---|---|
+| Ollama | `OLLAMA_ENABLED=true` | Local inference |
+| Gemini | `GEMINI_API_KEY` | Google AI API |
+| Groq | `GROQ_API_KEY` | Fast hosted models |
+| OpenRouter | `OPENROUTER_API_KEY` | Multi-model gateway |
+| Hugging Face | `HF_TOKEN` | Inference Providers |
+| OpenAI | `OPENAI_API_KEY` | OpenAI API |
+| Claude | `ANTHROPIC_API_KEY` | Anthropic API |
+
+Provider quotas, pricing and model availability can change. Judo does not promise that a provider's free tier will remain free or available.
+
+## Jarvis voice upgrade
+
+The Jarvis-inspired layer is under `src/jarvis/`.
+
+### Voice activity detection
+
+`vad.mjs` provides:
+
+- microphone echo cancellation
+- noise suppression
+- automatic gain control
+- adaptive noise floor
+- speech thresholding
+- hysteresis
+- segment capture
+- microphone level reporting
+- clean shutdown
+
+The implementation is browser JavaScript, so it can be loaded directly by the Judo UI.
+
+### Optional ElevenLabs voice
+
+Add:
+
+```env
+ELEVENLABS_API_KEY=your_key
+JUDO_VOICE_ID=JBFqnCBsd6RMkjVDRZzb
+```
+
+The key stays on the local bridge. The browser sends audio/text to the local bridge rather than receiving the secret.
+
+### Claude Agent bridge
+
+The local bridge uses the Claude Agent SDK to provide a controlled tool/agent runtime.
+
+The bridge deliberately uses a conservative policy:
+
+```env
+JUDO_ALLOW_WRITES=false
+```
+
+Read-only tools can run. Effectful operations such as shell commands, file writes, deletion, publishing, purchases or outbound actions remain blocked until you explicitly enable writes.
+
+Do not enable writes on a machine you do not trust.
+
+## Audio modules
+
+`src/jarvis/audio.mjs`
+- shared microphone stream
+- analyser
+- microphone level
+- output analyser
+
+`src/jarvis/sfx.mjs`
+- synthesized boot/wake/listen/tool/done/error cues
+- volume control
+- voice ducking
+
+`src/jarvis/kokoro.mjs`
+- optional browser-side Kokoro TTS adapter
+- WebGPU path when the optional package is installed
+- automatic fallback when unavailable
+
+## Alexa
+
+The repository also contains an Alexa Lambda starter at `alexa/lambda.mjs`.
+
+Alexa cannot directly reach a localhost-only Judo server. A deployed endpoint and appropriate account linking/storage are required for persistent cross-device conversations.
 
 ## Privacy
 
-Requests and attached files are sent to the selected remote provider. Ollama requests stay on the local machine. Review each remote provider's data terms and usage limits before configuring its key. Browser history stays in that browser profile. The app binds to `127.0.0.1` by default. No user accounts or long-term file storage are included.
+Judo is designed to keep provider keys on the local server.
+
+- Ollama requests stay on the local machine.
+- Remote provider requests and attachments go to the provider selected by Judo.
+- ElevenLabs voice requests go through the local Jarvis bridge.
+- Browser chat history is stored in localStorage.
+- The local servers bind to loopback by default.
+- No Judo account system is included.
+
+Microphone access is only requested when you activate voice.
+
+## Security
+
+The Jarvis bridge validates browser origins and listens on loopback.
+
+Write-capable tools are disabled by default. If you enable them, review the tool policy and environment first.
+
+Never commit:
+
+- `.env`
+- API keys
+- access tokens
+- private certificates
+- personal credentials
+
+## Development checks
+
+Run:
+
+```bash
+npm run check
+```
+
+This performs Node syntax checks on the core server, bridge and Jarvis browser modules.
+
+## Project structure
+
+```text
+judo/
+├── index.html
+├── styles.css
+├── app.js
+├── server.mjs
+├── jarvis-bridge.mjs
+├── start-all.mjs
+├── package.json
+├── .env.example
+├── providers/
+│   ├── base.mjs
+│   ├── compatible.mjs
+│   ├── gemini.mjs
+│   ├── openai.mjs
+│   └── claude.mjs
+├── src/
+│   ├── config.mjs
+│   ├── judo-core.mjs
+│   └── jarvis/
+│       ├── audio.mjs
+│       ├── capabilities.mjs
+│       ├── kokoro.mjs
+│       ├── sfx.mjs
+│       └── vad.mjs
+└── alexa/
+    └── lambda.mjs
+```
+
+## Credits
+
+The voice/agent upgrade is inspired by the architecture and implementation ideas in the public [adewaskar/jarvis](https://github.com/adewaskar/jarvis) project.
+
+Judo keeps its own provider routing, UI, storage model and project structure; the Jarvis functionality is selectively adapted rather than replacing the application.
+
+## License
+
+Check the repository license before redistributing the project or adapted components.

@@ -150,15 +150,58 @@ async function refreshProviders() {
     const select = $('#provider'); [...select.options].forEach(option => { const entry = providers.find(item => item.id === option.value); option.disabled = !entry?.available; });
   } catch { $('#providerSummary').textContent = 'Local server unavailable'; }
 }
-function setupVoice() {
-  const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechAPI) { $('#mic').onclick = () => toast('Voice input is not available in this browser. Alexa support is provided by the included skill adapter.'); return; }
-  recognition = new SpeechAPI(); recognition.lang = 'en-US'; recognition.interimResults = true; recognition.continuous = false;
-  recognition.onstart = () => { $('#voiceState').textContent = 'Listening…'; $('#voiceState').classList.add('listening'); };
-  recognition.onend = () => { $('#voiceState').textContent = 'One Judo conversation'; $('#voiceState').classList.remove('listening'); };
-  recognition.onerror = () => { $('#voiceState').textContent = 'Voice unavailable'; };
-  recognition.onresult = event => { let transcript = ''; for (let i=event.resultIndex;i<event.results.length;i++) transcript += event.results[i][0].transcript; input.value = transcript; if (event.results[event.results.length-1].isFinal) send(transcript); };
-  $('#mic').onclick = () => { try { recognition.start(); } catch { recognition.stop(); } };
+let voiceMode='browser', voiceController=null, voiceBridge=null;
+async function setupVoice(){
+  const SpeechAPI=window.SpeechRecognition||window.webkitSpeechRecognition;
+  try{
+    const health=await fetch('http://127.0.0.1:8787/health',{cache:'no-store'}).then(r=>r.json());
+    if(health.ok) voiceBridge=health;
+  }catch{}
+  if(voiceBridge){
+    const {startVad}=await import('/src/jarvis/vad.mjs');
+    const {unlockAudio}=await import('/src/jarvis/sfx.mjs');
+    let active=false;
+    const start=async()=>{
+      if(active)return;
+      active=true; await unlockAudio();
+      voiceController=await startVad({
+        onStart:()=>{ $('#voiceState').textContent='Listening…'; $('#voiceState').classList.add('listening'); },
+        onLevel:v=>{ if(v>0.04) $('#voiceState').textContent='Listening…'; },
+        onEnd:async blob=>{
+          try{
+            const response=await fetch('http://127.0.0.1:8787/stt',{method:'POST',headers:{'content-type':blob.type||'audio/webm'},body:blob});
+            if(!response.ok) throw new Error('Voice transcription failed.');
+            const data=await response.json();
+            if(data.text?.trim()) send(data.text.trim());
+          }catch(error){showError(error.message);}
+        },
+        onError:message=>{active=false;toast(message);}
+      });
+      $('#voiceState').textContent='Jarvis voice active · click to stop';
+      $('#mic').classList.add('listening');
+    };
+    const stop=()=>{voiceController?.stop();voiceController=null;active=false;$('#voiceState').textContent='Voice off';$('#mic').classList.remove('listening');};
+    $('#mic').onclick=()=>active?stop():start();
+    voiceMode=voiceBridge.stt?'elevenlabs':'browser';
+    $('#voiceState').textContent='Jarvis voice ready';
+    return;
+  }
+  if(!SpeechAPI){
+    $('#mic').onclick=()=>toast('Voice input is not available in this browser.');
+    return;
+  }
+  recognition=new SpeechAPI();
+  recognition.lang='en-GB'; recognition.interimResults=true; recognition.continuous=false;
+  recognition.onstart=()=>{$('#voiceState').textContent='Listening…';$('#voiceState').classList.add('listening');};
+  recognition.onend=()=>{$('#voiceState').textContent='Voice ready';$('#voiceState').classList.remove('listening');};
+  recognition.onerror=()=>{$('#voiceState').textContent='Voice unavailable';};
+  recognition.onresult=event=>{
+    let transcript='';
+    for(let i=event.resultIndex;i<event.results.length;i++) transcript+=event.results[i][0].transcript;
+    input.value=transcript;
+    if(event.results[event.results.length-1].isFinal) send(transcript);
+  };
+  $('#mic').onclick=()=>{try{recognition.start();}catch{recognition.stop();}};
 }
 $('#send').onclick = () => send();
 input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } });
@@ -176,37 +219,5 @@ $('#closeSaved').onclick = () => $('#savedOverlay').classList.remove('open');
 $('#savedOverlay').onclick = event => { if (event.target === $('#savedOverlay')) $('#savedOverlay').classList.remove('open'); };
 document.querySelectorAll('.suggest').forEach(button => button.onclick = () => send(button.dataset.prompt));
 window.addEventListener('beforeunload', () => recognition?.stop());
-renderProjects(); renderRecent(); if (activeId && activeChat()) renderChat(); else { activeId = ''; renderChat(); } refreshProviders(); setupVoice();
-
-
-// Jarvis voice upgrade: continuous microphone input with local VAD, optional ElevenLabs STT, and barge-in.
-let jarvisVoice = null;
-async function initJarvisVoice() {
-  try {
-    const caps = await fetch('http://127.0.0.1:8787/health',{cache:'no-store'}).then(r=>r.json()).catch(()=>({stt:false,tts:false}));
-    if (!caps.ok) return;
-    const { startVad } = await import('/src/jarvis/vad.mjs');
-    const { getMic, startAnalyser, micLevel } = await import('/src/jarvis/audio.mjs');
-    await getMic(); await startAnalyser();
-    const inputEl = input;
-    const sendVoice = async (blob) => {
-      if (blob.size < 1200) return;
-      try {
-        const res = await fetch('http://127.0.0.1:8787/stt',{method:'POST',headers:{'content-type':blob.type||'audio/webm'},body:blob});
-        if (!res.ok) throw new Error('Voice transcription unavailable');
-        const {text} = await res.json();
-        if (text?.trim()) send(text.trim());
-      } catch (e) { toast(e.message || 'Voice input unavailable.'); }
-    };
-    jarvisVoice = await startVad({
-      onStart:()=>{ $('#voiceState').textContent='Listening…'; $('#voiceState').classList.add('listening'); },
-      onEnd:(blob)=>void sendVoice(blob),
-      onLevel:(v)=>{ $('#voiceState').textContent = v>0.04 ? 'Listening…' : 'Jarvis ready'; },
-      onError:(msg)=>toast(msg)
-    });
-    window.__judoJarvis = { micLevel, stop:()=>jarvisVoice?.stop() };
-    toast(caps.stt ? 'Jarvis voice bridge connected.' : 'Jarvis voice ready; browser STT fallback is available.');
-  } catch {}
-}
-
-void initJarvisVoice();
+renderProjects(); renderRecent(); if (activeId && activeChat()) renderChat(); else { activeId = ''; renderChat(); } refreshProviders();
+void setupVoice();
