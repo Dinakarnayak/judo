@@ -1,8 +1,18 @@
 {
   "name": "judo-ai-assistant",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "private": true,
   "type": "module",
-  "scripts": { "start": "node server.mjs" },
-  "dependencies": { "ask-sdk-core": "^2.14.0" }
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.mjs",
+    "start:voice": "node jarvis-bridge.mjs",
+    "check": "node --check server.mjs && node --check jarvis-bridge.mjs && node --check src/jarvis/audio.mjs && node --check src/jarvis/capabilities.mjs && node --check src/jarvis/sfx.mjs"
+  },
+  "dependencies": {
+    "ask-sdk-core": "^2.14.0",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.220",
+    "ws": "^8.21.1",
+    "zod": "^4.4.3"
+  }
 }
-

@@ -13,3 +13,12 @@ if (fs.existsSync(envFile)) {
 
 export const env = process.env;
 
+// Jarvis-style local voice bridge configuration.
+// All secrets remain server-side in .env.
+export const voiceConfig = {
+  bridgePort: Number(env.JUDO_BRIDGE_PORT || 8787),
+  elevenLabsApiKey: env.ELEVENLABS_API_KEY || '',
+  elevenLabsVoiceId: env.JUDO_VOICE_ID || 'JBFqnCBsd6RMkjVDRZzb',
+  model: env.JUDO_AGENT_MODEL || 'auto',
+  writesEnabled: env.JUDO_ALLOW_WRITES === 'true',
+};

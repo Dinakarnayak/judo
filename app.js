@@ -177,3 +177,36 @@ $('#savedOverlay').onclick = event => { if (event.target === $('#savedOverlay'))
 document.querySelectorAll('.suggest').forEach(button => button.onclick = () => send(button.dataset.prompt));
 window.addEventListener('beforeunload', () => recognition?.stop());
 renderProjects(); renderRecent(); if (activeId && activeChat()) renderChat(); else { activeId = ''; renderChat(); } refreshProviders(); setupVoice();
+
+
+// Jarvis voice upgrade: continuous microphone input with local VAD, optional ElevenLabs STT, and barge-in.
+let jarvisVoice = null;
+async function initJarvisVoice() {
+  try {
+    const caps = await fetch('http://127.0.0.1:8787/health',{cache:'no-store'}).then(r=>r.json()).catch(()=>({stt:false,tts:false}));
+    if (!caps.ok) return;
+    const { startVad } = await import('/src/jarvis/vad.mjs');
+    const { getMic, startAnalyser, micLevel } = await import('/src/jarvis/audio.mjs');
+    await getMic(); await startAnalyser();
+    const inputEl = input;
+    const sendVoice = async (blob) => {
+      if (blob.size < 1200) return;
+      try {
+        const res = await fetch('http://127.0.0.1:8787/stt',{method:'POST',headers:{'content-type':blob.type||'audio/webm'},body:blob});
+        if (!res.ok) throw new Error('Voice transcription unavailable');
+        const {text} = await res.json();
+        if (text?.trim()) send(text.trim());
+      } catch (e) { toast(e.message || 'Voice input unavailable.'); }
+    };
+    jarvisVoice = await startVad({
+      onStart:()=>{ $('#voiceState').textContent='Listening…'; $('#voiceState').classList.add('listening'); },
+      onEnd:(blob)=>void sendVoice(blob),
+      onLevel:(v)=>{ $('#voiceState').textContent = v>0.04 ? 'Listening…' : 'Jarvis ready'; },
+      onError:(msg)=>toast(msg)
+    });
+    window.__judoJarvis = { micLevel, stop:()=>jarvisVoice?.stop() };
+    toast(caps.stt ? 'Jarvis voice bridge connected.' : 'Jarvis voice ready; browser STT fallback is available.');
+  } catch {}
+}
+
+void initJarvisVoice();
