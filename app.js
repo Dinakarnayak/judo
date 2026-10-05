@@ -12,7 +12,8 @@ let projects = readStore(keys.projects, ['Personal']);
 let activeId = localStorage.getItem(keys.active) || '';
 let currentProject = 'Personal';
 const isGitHubPages = location.hostname.endsWith('github.io');
-const apiBase = (localStorage.getItem('judo.apiBase.v1') || '').replace(/\/$/, '');
+const defaultApiBase = isGitHubPages ? 'https://judo-git-main-judo4.vercel.app' : '';
+const apiBase = (localStorage.getItem('judo.apiBase.v1') || defaultApiBase).replace(/\/$/, '');
 function apiUrl(path) { return apiBase ? `${apiBase}${path}` : path; }
 
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2400); }
@@ -146,7 +147,7 @@ async function send(text = input.value.trim()) {
 }
 async function refreshProviders() {
   try {
-    const response = await fetch('/api/providers', { cache: 'no-store' });
+    const response = await fetch(apiUrl('/api/providers'), { cache: 'no-store' });
     const data = await response.json(); providers.splice(0, providers.length, ...(data.providers || []));
     const enabled = providers.filter(provider => provider.available);
     $('#providerSummary').textContent = enabled.length ? `Ready · ${enabled.map(item => item.label).join(' + ')}` : 'Add API keys to start';
