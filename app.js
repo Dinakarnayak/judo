@@ -12,7 +12,7 @@ let projects = readStore(keys.projects, ['Personal']);
 let activeId = localStorage.getItem(keys.active) || '';
 let currentProject = 'Personal';
 const isGitHubPages = location.hostname.endsWith('github.io');
-const defaultApiBase = isGitHubPages ? 'https://judo-git-main-judo4.vercel.app' : '';
+const defaultApiBase = isGitHubPages ? 'https://judo-2363mqqbk-judo4.vercel.app' : '';
 const apiBase = (isGitHubPages ? defaultApiBase : (localStorage.getItem('judo.apiBase.v1') || defaultApiBase)).replace(/\/$/, '');
 function apiUrl(path) { return apiBase ? `${apiBase}${path}` : path; }
 
