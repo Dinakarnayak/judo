@@ -158,8 +158,8 @@ async function setupVoice(){
     if(health.ok) voiceBridge=health;
   }catch{}
   if(voiceBridge){
-    const {startVad}=await import('/src/jarvis/vad.mjs');
-    const {unlockAudio}=await import('/src/jarvis/sfx.mjs');
+    const {startVad}=await import('./src/jarvis/vad.mjs');
+    const {unlockAudio}=await import('./src/jarvis/sfx.mjs');
     let active=false;
     const start=async()=>{
       if(active)return;
