@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "functions": {
+    "api/chat.mjs": {
+      "maxDuration": 60
+    },
+    "api/providers.mjs": {
+      "maxDuration": 10
+    }
+  }
+}
