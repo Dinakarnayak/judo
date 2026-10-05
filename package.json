@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node server.mjs",
     "start:voice": "node jarvis-bridge.mjs",
-    "check": "node --check server.mjs && node --check jarvis-bridge.mjs && node --check src/jarvis/audio.mjs && node --check src/jarvis/capabilities.mjs && node --check src/jarvis/sfx.mjs",
+    "check": "node --check server.mjs && node --check jarvis-bridge.mjs && node --check start-all.mjs && node --check app.js && node --check src/jarvis/audio.mjs && node --check src/jarvis/capabilities.mjs && node --check src/jarvis/kokoro.mjs && node --check src/jarvis/sfx.mjs && node --check src/jarvis/vad.mjs",
     "start:all": "node start-all.mjs"
   },
   "dependencies": {
