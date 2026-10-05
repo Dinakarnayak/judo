@@ -3,11 +3,14 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.mjs",
     "start:voice": "node jarvis-bridge.mjs",
-    "check": "node --check server.mjs && node --check jarvis-bridge.mjs && node --check src/jarvis/audio.mjs && node --check src/jarvis/capabilities.mjs && node --check src/jarvis/sfx.mjs"
+    "check": "node --check server.mjs && node --check jarvis-bridge.mjs && node --check src/jarvis/audio.mjs && node --check src/jarvis/capabilities.mjs && node --check src/jarvis/sfx.mjs",
+    "start:all": "node start-all.mjs"
   },
   "dependencies": {
     "ask-sdk-core": "^2.14.0",
