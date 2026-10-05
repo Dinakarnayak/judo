@@ -1,11 +1,8 @@
 {
   "version": 2,
   "functions": {
-    "api/chat.mjs": {
-      "maxDuration": 60
-    },
-    "api/providers.mjs": {
-      "maxDuration": 10
-    }
+    "api/chat.js": { "maxDuration": 60 },
+    "api/providers.js": { "maxDuration": 10 },
+    "api/health.js": { "maxDuration": 10 }
   }
 }
