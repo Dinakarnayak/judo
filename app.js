@@ -219,7 +219,5 @@ $('#closeSaved').onclick = () => $('#savedOverlay').classList.remove('open');
 $('#savedOverlay').onclick = event => { if (event.target === $('#savedOverlay')) $('#savedOverlay').classList.remove('open'); };
 document.querySelectorAll('.suggest').forEach(button => button.onclick = () => send(button.dataset.prompt));
 window.addEventListener('beforeunload', () => recognition?.stop());
-renderProjects(); renderRecent(); if (activeId && activeChat()) renderChat(); else { activeId = ''; renderChat(); } refreshProviders(); setupVoice();
-
-
+renderProjects(); renderRecent(); if (activeId && activeChat()) renderChat(); else { activeId = ''; renderChat(); } refreshProviders();
 void setupVoice();
