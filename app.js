@@ -133,7 +133,7 @@ async function send(text = input.value.trim()) {
     }) });
     const raw = await response.text();
     let result;
-    try { result = JSON.parse(raw); } catch { throw new Error(isGitHubPages ? 'Judo backend is not connected to this GitHub Pages site. Run Judo locally, or configure a hosted Judo API URL.' : `Judo server returned an invalid response (${response.status}).`); }
+    try { result = JSON.parse(raw); } catch { throw new Error(isGitHubPages ? `Hosted Judo API is unavailable (${response.status || 'network error'}). Open ${apiBase}/api/providers to verify the Vercel backend.` : `Judo server returned an invalid response (${response.status}).`); }
     chat.messages.pop();
     if (!response.ok) throw new Error(result.error || `Judo request failed (${response.status}).`);
     chat.messages.push({ role: 'assistant', content: result.text, providers: result.providers, rationale: result.rationale, synthesized: result.synthesized, citations: result.citations });
