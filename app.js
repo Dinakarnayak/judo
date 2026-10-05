@@ -13,7 +13,7 @@ let activeId = localStorage.getItem(keys.active) || '';
 let currentProject = 'Personal';
 const isGitHubPages = location.hostname.endsWith('github.io');
 const defaultApiBase = isGitHubPages ? 'https://judo-git-main-judo4.vercel.app' : '';
-const apiBase = (localStorage.getItem('judo.apiBase.v1') || defaultApiBase).replace(/\/$/, '');
+const apiBase = (isGitHubPages ? defaultApiBase : (localStorage.getItem('judo.apiBase.v1') || defaultApiBase)).replace(/\/$/, '');
 function apiUrl(path) { return apiBase ? `${apiBase}${path}` : path; }
 
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2400); }
